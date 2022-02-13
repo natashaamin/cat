@@ -1,14 +1,17 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import App from './App';
+import ReactDOM from 'react-dom';
 
-test('renders learn react link', () => {
+test('renders no search found', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  const noSearchFound = <p>No search found</p>;
+  expect(noSearchFound).toBeInTheDocument();
+
 });
 
-test('loading is setting true when api is calling', () => {
-  render(<App />);
-  expect('loading').toBeInTheDocument();
+it('renders without crashing', () => {
+  const div = document.createElement('div');
+  ReactDOM.render(<App />, div);
+  ReactDOM.unmountComponentAtNode(div);
 });

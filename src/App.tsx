@@ -3,7 +3,6 @@ import "./App.css";
 import { GetCatBreedResponse } from "./models/breed";
 import * as SearchServices from "../src/api/SearchServices";
 import { ApiErrorHandler } from "./utilities/ApiErrorHandler";
-import debounce from "lodash/debounce";
 import SearchComponent from "./containers/SearchComponent";
 import ListItemComponent from "./containers/ListItemComponent";
 import { GetCatImageResponse } from "./models/image";
@@ -15,14 +14,19 @@ interface StyleSheet {
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isEmpty, setIsEmpty] = useState<boolean>(false);
-
   const [query, setQuery] = useState("");
   const [imageResults, setImageResults] = useState<GetCatImageResponse[]>([]);
 
-  const getCatDetails = async (
-    breedName: string,
-    cb: (value: GetCatImageResponse[]) => void
-  ) => {
+  const debounce = (func: any, delay: number) => {
+    let setTimoutInstance: any;
+    return function () {
+      const args = arguments;
+      if (setTimoutInstance) clearTimeout(setTimoutInstance);
+      setTimoutInstance = setTimeout(() => func.apply("", args), delay);
+    };
+  };
+
+  const getCatDetails = async (breedName: string) => {
     try {
       setLoading(true);
       const responseResult = await SearchServices.getCatBreed(breedName);
@@ -30,13 +34,13 @@ function App() {
         .json()
         .then((body) => body)) as GetCatBreedResponse[];
 
-      if(breedResult.length == 0) setIsEmpty(true);
+      if (breedResult.length == 0) setIsEmpty(true);
 
-      breedResult.map(async (x) => {
+      const final = breedResult.map(async (x) => {
         try {
           await getCatImages(x.id).then((body) => {
             if (body == undefined) return;
-            cb(body);
+            setImageResults(prevArray => [...prevArray, ...body])
           });
         } catch (e) {
           ApiErrorHandler(e);
@@ -61,9 +65,9 @@ function App() {
     }
   };
 
-  const debouncedFetchData = useCallback(
-    debounce((query, cb) => {
-      getCatDetails(query, cb);
+  const debouncedFetchData: any = useCallback(
+    debounce((query: string) => {
+      getCatDetails(query);
     }, 1000),
     []
   );
@@ -71,20 +75,15 @@ function App() {
   const styles: StyleSheet = {
     emptyDiv: {
       padding: 10,
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center'
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
     },
-  }
+  };
 
   useEffect(() => {
-    if (query.length >= 3) {
-      debouncedFetchData(query, (res: []) => {
-        setImageResults(res);
-        return () => {
-          debouncedFetchData.cancel();
-        };
-      });
+    if(query.length >=  3) {
+      query && debouncedFetchData(query);
     }
   }, [query]);
 
@@ -97,37 +96,41 @@ function App() {
         }}
       />
 
-      {isEmpty && <div> <p style={styles.emptyDiv}>No search found</p></div>}
+      {isEmpty && (
+        <div>
+          {" "}
+          <p style={styles.emptyDiv}>No search found</p>
+        </div>
+      )}
 
-      <div>
-        {imageResults.map((items, index) => {
+      {!isEmpty &&
+        imageResults.map((items, index) => {
           return (
-            <div key={index}>
+            <div>
               {items.breeds
                 .sort((a, b) =>
                   a.name > b.weight.imperial && a.weight.imperial > b.life_span
                     ? 1
                     : -1
                 )
-                .map((subItems) => {
+                .map((subItems, subIndex) => {
                   return (
-                    <ListItemComponent
-                      name={subItems.name}
-                      weight={subItems.weight.imperial}
-                      lifeSpan={subItems.life_span}
-                      imgUrl={items.url}
-                      loading={loading}
-                    />
+                    <span key={index}>
+                      <ListItemComponent
+                        name={subItems.name}
+                        weight={subItems.weight.imperial}
+                        lifeSpan={subItems.life_span}
+                        imgUrl={items.url}
+                        loading={loading}
+                      />
+                    </span>
                   );
                 })}
             </div>
           );
         })}
-      </div>
     </div>
   );
 }
 
 export default App;
-
-
