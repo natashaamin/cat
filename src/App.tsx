@@ -7,17 +7,14 @@ import debounce from "lodash/debounce";
 import SearchComponent from "./containers/SearchComponent";
 import ListItemComponent from "./containers/ListItemComponent";
 import LoadingOverlay from "react-loading-overlay-ts";
-import { Breed, GetCatImageResponse } from "./models/image";
-
-interface CatBreed {
-  breed: Breed[];
-}
+import { GetCatImageResponse } from "./models/image";
+import { usePromiseTracker } from "react-promise-tracker";
 
 function App() {
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [query, setQuery] = useState("");
   const [imageResults, setImageResults] = useState<GetCatImageResponse[]>([]);
-  const [catBreed, setCatBreed] = useState<CatBreed>({} as CatBreed);
+  const { promiseInProgress } = usePromiseTracker();
 
   const getCatDetails = async (
     breedName: string,
@@ -59,9 +56,12 @@ function App() {
     }
   };
 
-  const debouncedFetchData = debounce((query, cb) => {
-    getCatDetails(query, cb);
-  }, 1000);
+  const debouncedFetchData = useCallback(
+    debounce((query, cb) => {
+      getCatDetails(query, cb);
+    }, 1000),
+    []
+  );
 
   useEffect(() => {
     if (query.length >= 3) {
@@ -83,27 +83,28 @@ function App() {
         }}
       />
 
-      {loading && (
-        <LoadingOverlay active={loading} spinner text="Loading your content...">
-          {" "}
-        </LoadingOverlay>
-      )}
-
       <div>
         {imageResults.map((items, index) => {
           return (
-            <ol>
-              {items.breed.map((subItems) => {
-                return (
-                  <ListItemComponent
-                    name={subItems.name}
-                    weight={subItems.name}
-                    lifeSpan={subItems.name}
-                    imgUrl={items.url}
-                  />
-                );
-              })}
-            </ol>
+            <div key={index}>
+              {items.breeds
+                .sort((a, b) =>
+                  a.name > b.weight.imperial && a.weight.imperial > b.life_span
+                    ? 1
+                    : -1
+                )
+                .map((subItems) => {
+                  return (
+                    <ListItemComponent
+                      name={subItems.name}
+                      weight={subItems.weight.imperial}
+                      lifeSpan={subItems.life_span}
+                      imgUrl={items.url}
+                      loading={loading}
+                    />
+                  );
+                })}
+            </div>
           );
         })}
       </div>

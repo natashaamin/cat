@@ -7,3 +7,8 @@ test('renders learn react link', () => {
   const linkElement = screen.getByText(/learn react/i);
   expect(linkElement).toBeInTheDocument();
 });
+
+test('loading is setting true when api is calling', () => {
+  render(<App />);
+  expect('loading').toBeInTheDocument();
+});

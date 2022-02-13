@@ -1,19 +1,7 @@
 import * as t from "io-ts";
 
-export interface Weight {
-  imperial: string;
-  metric: string;
-}
-
-export interface Breed {
-  id: string;
-  name: string;
-  life_span: string;
-  weight: Weight;
-}
-
 export const TGetCatImage = t.interface({
-  breed: t.array(t.type({
+  breeds: t.array(t.type({
     id: t.string,
     name: t.string,
     life_span: t.string,
