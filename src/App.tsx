@@ -6,15 +6,18 @@ import { ApiErrorHandler } from "./utilities/ApiErrorHandler";
 import debounce from "lodash/debounce";
 import SearchComponent from "./containers/SearchComponent";
 import ListItemComponent from "./containers/ListItemComponent";
-import LoadingOverlay from "react-loading-overlay-ts";
 import { GetCatImageResponse } from "./models/image";
-import { usePromiseTracker } from "react-promise-tracker";
+
+interface StyleSheet {
+  [key: string]: React.CSSProperties;
+}
 
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
+  const [isEmpty, setIsEmpty] = useState<boolean>(false);
+
   const [query, setQuery] = useState("");
   const [imageResults, setImageResults] = useState<GetCatImageResponse[]>([]);
-  const { promiseInProgress } = usePromiseTracker();
 
   const getCatDetails = async (
     breedName: string,
@@ -26,6 +29,8 @@ function App() {
       const breedResult = (await responseResult
         .json()
         .then((body) => body)) as GetCatBreedResponse[];
+
+      if(breedResult.length == 0) setIsEmpty(true);
 
       breedResult.map(async (x) => {
         try {
@@ -63,6 +68,15 @@ function App() {
     []
   );
 
+  const styles: StyleSheet = {
+    emptyDiv: {
+      padding: 10,
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center'
+    },
+  }
+
   useEffect(() => {
     if (query.length >= 3) {
       debouncedFetchData(query, (res: []) => {
@@ -82,6 +96,8 @@ function App() {
           setQuery(e.target.value);
         }}
       />
+
+      {isEmpty && <div> <p style={styles.emptyDiv}>No search found</p></div>}
 
       <div>
         {imageResults.map((items, index) => {
@@ -113,3 +129,5 @@ function App() {
 }
 
 export default App;
+
+
