@@ -16,6 +16,7 @@ function App() {
   const [isEmpty, setIsEmpty] = useState<boolean>(false);
   const [query, setQuery] = useState("");
   const [imageResults, setImageResults] = useState<GetCatImageResponse[]>([]);
+  const [state, setState] = useState<GetCatBreedResponse[]>([]);
 
   const debounce = (func: any, delay: number) => {
     let setTimoutInstance: any;
@@ -36,11 +37,19 @@ function App() {
 
       if (breedResult.length == 0) setIsEmpty(true);
 
-      const final = breedResult.map(async (x) => {
+      breedResult.map(async (x) => {
         try {
           await getCatImages(x.id).then((body) => {
             if (body == undefined) return;
-            setImageResults(prevArray => [...prevArray, ...body])
+            const updatedList = body.map((item) => {
+              return item.breeds.filter(
+                (value, index, self) =>
+                  index === self.findIndex((t) => t.id === value.id)
+              );
+            });
+
+            setImageResults(body);
+            setState(updatedList[0]);
           });
         } catch (e) {
           ApiErrorHandler(e);
@@ -82,7 +91,7 @@ function App() {
   };
 
   useEffect(() => {
-    if(query.length >=  3) {
+    if (query.length >= 3) {
       query && debouncedFetchData(query);
     }
   }, [query]);
@@ -107,7 +116,7 @@ function App() {
         imageResults.map((items, index) => {
           return (
             <div>
-              {items.breeds
+              {state
                 .sort((a, b) =>
                   a.name > b.weight.imperial && a.weight.imperial > b.life_span
                     ? 1
