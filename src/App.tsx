@@ -6,55 +6,56 @@ import { ApiErrorHandler } from "./utilities/ApiErrorHandler";
 import SearchComponent from "./containers/SearchComponent";
 import ListItemComponent from "./containers/ListItemComponent";
 import { GetCatImageResponse } from "./models/image";
+import { debounce } from "lodash";
+import _ from "lodash";
 
 interface StyleSheet {
   [key: string]: React.CSSProperties;
+}
+
+interface IImage {
+  id: string;
+  url: string;
+  width: number;
+  height: number;
 }
 
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isEmpty, setIsEmpty] = useState<boolean>(false);
   const [query, setQuery] = useState("");
-  const [imageResults, setImageResults] = useState<GetCatImageResponse[]>([]);
-  const [state, setState] = useState<GetCatBreedResponse[]>([]);
+  // const [img, setImg] = useState<IImage[]>([]);
+  const [state, setState] = useState<GetCatImageResponse[]>([]);
 
-  const debounce = (func: any, delay: number) => {
-    let setTimoutInstance: any;
-    return function () {
-      const args = arguments;
-      if (setTimoutInstance) clearTimeout(setTimoutInstance);
-      setTimoutInstance = setTimeout(() => func.apply("", args), delay);
-    };
-  };
+  // const debounce = (func: any, delay: number) => {
+  //   let setTimoutInstance: any;
+  //   return function () {
+  //     const args = arguments;
+  //     if (setTimoutInstance) clearTimeout(setTimoutInstance);
+  //     setTimoutInstance = setTimeout(() => func.apply("", args), delay);
+  //   };
+  // };
 
-  const getCatDetails = async (breedName: string) => {
+  const getCatDetails = async (
+    breedName: string,
+    cb: (res: GetCatImageResponse[]) => any
+  ) => {
     try {
       setLoading(true);
-      const responseResult = await SearchServices.getCatBreed(breedName);
-      const breedResult = (await responseResult
-        .json()
-        .then((body) => body)) as GetCatBreedResponse[];
+      await SearchServices.getCatBreed(breedName)
+        .then((body) => {
+          return body.json();
+        })
+        .then((data) => {
+          if (data.length == 0) setIsEmpty(true);
 
-      if (breedResult.length == 0) setIsEmpty(true);
-
-      breedResult.map(async (x) => {
-        try {
-          await getCatImages(x.id).then((body) => {
-            if (body == undefined) return;
-            const updatedList = body.map((item) => {
-              return item.breeds.filter(
-                (value, index, self) =>
-                  index === self.findIndex((t) => t.id === value.id)
-              );
+          data.map((x: { id: string }) => {
+            getCatImages(x.id).then((body) => {
+              if (body == undefined) return;
+              cb(body);
             });
-
-            setImageResults(body);
-            setState(updatedList[0]);
           });
-        } catch (e) {
-          ApiErrorHandler(e);
-        }
-      });
+        });
     } catch (e) {
       ApiErrorHandler(e);
     } finally {
@@ -63,20 +64,21 @@ function App() {
   };
 
   const getCatImages = async (id: string) => {
+    console.log("getImages");
     try {
-      const res = await SearchServices.getCatImage(id);
-      const final = (await res
-        .json()
-        .then((body) => body)) as GetCatImageResponse[];
-      return final;
+      const res = await SearchServices.getCatImage(id)
+        .then((body) => {
+          return body.json();
+        });
+      return res;
     } catch (e) {
       ApiErrorHandler(e);
     }
   };
 
   const debouncedFetchData: any = useCallback(
-    debounce((query: string) => {
-      getCatDetails(query);
+    debounce((query: string, cb) => {
+      getCatDetails(query, cb);
     }, 1000),
     []
   );
@@ -88,11 +90,17 @@ function App() {
       justifyContent: "center",
       alignItems: "center",
     },
+    list: {
+      display: "contents",
+    },
   };
 
   useEffect(() => {
     if (query.length >= 3) {
-      query && debouncedFetchData(query);
+      const parsedQuery = query.replace(" ", "+");
+      debouncedFetchData(parsedQuery, (res: GetCatImageResponse[]) => {
+        setState(prevState => [...res, ...prevState]);
+      });
     }
   }, [query]);
 
@@ -105,39 +113,26 @@ function App() {
         }}
       />
 
-      {isEmpty && (
+      {!isEmpty ? (
+        state.map((result, index) =>
+          result.breeds.map((subItems) => (
+            <div key={index}>
+              <ListItemComponent
+                name={subItems.name}
+                weight={subItems.weight.imperial}
+                lifeSpan={subItems.life_span}
+                imgUrl={result.url}
+                loading={loading}
+              />
+            </div>
+          ))
+        )
+      ) : (
         <div>
           {" "}
           <p style={styles.emptyDiv}>No search found</p>
         </div>
       )}
-
-      {!isEmpty &&
-        imageResults.map((items, index) => {
-          return (
-            <div>
-              {state
-                .sort((a, b) =>
-                  a.name > b.weight.imperial && a.weight.imperial > b.life_span
-                    ? 1
-                    : -1
-                )
-                .map((subItems, subIndex) => {
-                  return (
-                    <span key={index}>
-                      <ListItemComponent
-                        name={subItems.name}
-                        weight={subItems.weight.imperial}
-                        lifeSpan={subItems.life_span}
-                        imgUrl={items.url}
-                        loading={loading}
-                      />
-                    </span>
-                  );
-                })}
-            </div>
-          );
-        })}
     </div>
   );
 }
