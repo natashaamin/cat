@@ -13,18 +13,10 @@ interface StyleSheet {
   [key: string]: React.CSSProperties;
 }
 
-interface IImage {
-  id: string;
-  url: string;
-  width: number;
-  height: number;
-}
-
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isEmpty, setIsEmpty] = useState<boolean>(false);
   const [query, setQuery] = useState("");
-  // const [img, setImg] = useState<IImage[]>([]);
   const [state, setState] = useState<GetCatImageResponse[]>([]);
 
   // const debounce = (func: any, delay: number) => {
@@ -64,12 +56,10 @@ function App() {
   };
 
   const getCatImages = async (id: string) => {
-    console.log("getImages");
     try {
-      const res = await SearchServices.getCatImage(id)
-        .then((body) => {
-          return body.json();
-        });
+      const res = await SearchServices.getCatImage(id).then((body) => {
+        return body.json();
+      });
       return res;
     } catch (e) {
       ApiErrorHandler(e);
@@ -99,7 +89,8 @@ function App() {
     if (query.length >= 3) {
       const parsedQuery = query.replace(" ", "+");
       debouncedFetchData(parsedQuery, (res: GetCatImageResponse[]) => {
-        setState(prevState => [...res, ...prevState]);
+        console.log(res,"ppp")
+        setState(prev => [...prev, ...res]);
       });
     }
   }, [query]);
@@ -113,10 +104,11 @@ function App() {
         }}
       />
 
+      
       {!isEmpty ? (
         state.map((result, index) =>
           result.breeds.map((subItems) => (
-            <div key={index}>
+            <div key={index} style={styles.list}>
               <ListItemComponent
                 name={subItems.name}
                 weight={subItems.weight.imperial}
