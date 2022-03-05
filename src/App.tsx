@@ -8,9 +8,15 @@ import ListItemComponent from "./containers/ListItemComponent";
 import { GetCatImageResponse } from "./models/image";
 import { debounce } from "lodash";
 import _ from "lodash";
+import { string } from "fp-ts";
 
 interface StyleSheet {
   [key: string]: React.CSSProperties;
+}
+
+interface Weight {
+  imperial: string;
+  metric: string;
 }
 
 function App() {
@@ -38,31 +44,33 @@ function App() {
         .then((body) => {
           return body.json();
         })
-        .then((data) => {
-          if (data.length == 0) setIsEmpty(true);
-
-          data.map((x: { id: string }) => {
-            getCatImages(x.id).then((body) => {
-              if (body == undefined) return;
-              cb(body);
-            });
-          });
+        .then((breeds) => {
+          const final = breeds.map(
+            (breed: {
+              name: string;
+              id: string;
+              life_span: string;
+              weight: Weight;
+            }) =>
+              SearchServices.getCatImage(breed.id)
+                .then((resp) => resp.json())
+                .then((res) => {
+                  if(res.length == 0) return;
+                  return ({
+                    name: breed.name,
+                    url: res[0].url,
+                    weight: breed.weight,
+                    life_span: breed.life_span,
+                  })
+                })
+          );
+          console.log(final,"final")
+          cb(final);
         });
     } catch (e) {
       ApiErrorHandler(e);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getCatImages = async (id: string) => {
-    try {
-      const res = await SearchServices.getCatImage(id).then((body) => {
-        return body.json();
-      });
-      return res;
-    } catch (e) {
-      ApiErrorHandler(e);
     }
   };
 
@@ -89,10 +97,15 @@ function App() {
     if (query.length >= 3) {
       const parsedQuery = query.replace(" ", "+");
       debouncedFetchData(parsedQuery, (res: GetCatImageResponse[]) => {
-        console.log(res,"ppp")
-        setState(prev => [...prev, ...res]);
+        Promise.all(res).then((body) => {
+          const final = body.filter(x => x != undefined);
+          setState(final);
+        });
       });
     }
+    return () => {
+      debouncedFetchData.cancel();
+    };
   }, [query]);
 
   return (
@@ -104,21 +117,18 @@ function App() {
         }}
       />
 
-      
       {!isEmpty ? (
-        state.map((result, index) =>
-          result.breeds.map((subItems) => (
-            <div key={index} style={styles.list}>
-              <ListItemComponent
-                name={subItems.name}
-                weight={subItems.weight.imperial}
-                lifeSpan={subItems.life_span}
-                imgUrl={result.url}
-                loading={loading}
-              />
-            </div>
-          ))
-        )
+        state.map((result, index) => (
+          <div key={index} style={styles.list}>
+            <ListItemComponent
+              name={result.name}
+              weight={result.weight.imperial}
+              lifeSpan={result.life_span}
+              imgUrl={result.url}
+              loading={loading}
+            />
+          </div>
+        ))
       ) : (
         <div>
           {" "}
