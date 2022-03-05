@@ -8,7 +8,6 @@ import ListItemComponent from "./containers/ListItemComponent";
 import { GetCatImageResponse } from "./models/image";
 import { debounce } from "lodash";
 import _ from "lodash";
-import { string } from "fp-ts";
 
 interface StyleSheet {
   [key: string]: React.CSSProperties;
@@ -25,14 +24,6 @@ function App() {
   const [query, setQuery] = useState("");
   const [state, setState] = useState<GetCatImageResponse[]>([]);
 
-  // const debounce = (func: any, delay: number) => {
-  //   let setTimoutInstance: any;
-  //   return function () {
-  //     const args = arguments;
-  //     if (setTimoutInstance) clearTimeout(setTimoutInstance);
-  //     setTimoutInstance = setTimeout(() => func.apply("", args), delay);
-  //   };
-  // };
 
   const getCatDetails = async (
     breedName: string,
@@ -64,7 +55,6 @@ function App() {
                   })
                 })
           );
-          console.log(final,"final")
           cb(final);
         });
     } catch (e) {
@@ -99,6 +89,7 @@ function App() {
       debouncedFetchData(parsedQuery, (res: GetCatImageResponse[]) => {
         Promise.all(res).then((body) => {
           const final = body.filter(x => x != undefined);
+          final.length == 0 ? setIsEmpty(true): setIsEmpty(false);
           setState(final);
         });
       });
